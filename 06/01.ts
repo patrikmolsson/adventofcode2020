@@ -6,11 +6,9 @@ const fs = require('fs');
 
     let sum = 0;
     for (const group of groups) {
-        const map = group
-            .split('')
-            .reduce((acc, curr) => ({...acc, [curr]: true}), {} as Record<string, boolean>);
+        const set = new Set([...group.split('')]);
 
-        sum += Object.keys(map).length;
+        sum += set.size;
     }
 
     console.log(sum);

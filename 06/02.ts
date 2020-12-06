@@ -6,24 +6,21 @@ const fs = require('fs');
 
     let sum = 0;
     for (const group of groups) {
-        const mapOfEveryYes = group.replace(/ /g, '').split('').reduce((acc, curr) => ({...acc, [curr]: true}), {} as Record<string, boolean>);
-        const replies = group.split(' ');
+        const replies = group.split(' ').map(reply => reply.split(''));
 
-        for (const reply of replies) {
-            for (const key of Object.keys(mapOfEveryYes)) {
-                if (!reply.includes(key)) {
-                    delete mapOfEveryYes[key];
-                }
-            }
-        }
+        const allYes = new Set([...intersect(...replies)]);
 
-        sum += Object.keys(mapOfEveryYes).length;
+        sum += allYes.size;
     }
 
     console.log(sum);
 })();
 
-function inputToGroupAnswers() {
+function intersect(...params: string[][]): string[] {
+    return params.reduce((a, b) => a.filter(c => b.includes(c)))
+}
+
+function inputToGroupAnswers(): string[] {
     const lines = fs.readFileSync('./input.txt').toString('utf-8');
 
     return lines.split('\r\n\r\n').map(p => p.replace(/\r\n/g, ' '), '');
