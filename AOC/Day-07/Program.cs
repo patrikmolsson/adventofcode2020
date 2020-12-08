@@ -14,82 +14,119 @@ namespace Day_07
 
             var list = input.Split("\r\n").ToArray();
 
-            new TaskOne(list);
-            new TaskTwo(list);
+            var one = new TaskOne(list);
+            one.Run();
+            var two = new TaskTwo(list);
+            two.Run();
         }
-    }
-    
-    internal class TaskOne
-    {
-        private readonly IDictionary<string, Bag> _map = new Dictionary<string, Bag>();
 
-        public TaskOne(string[] list)
+        private static IDictionary<string, Bag> CreateMap(string[] list)
         {
+            var map = new Dictionary<string, Bag>();
             foreach (var row in list)
             {
-                var bag = new Bag(row);
-                _map.Add(bag.Id, bag);
+                var matches = Regex.Matches(row, @"\w+");
+                var id = $"{matches[0]} {matches[1]}";
+
+                var bag = GetOrAdd(id);
+
+                // 5,6
+                // 9,10
+                // 13,14
+                for (var i = 5; i < matches.Count; i += 4)
+                {
+                    if (matches[i].Value == "other") continue;
+
+                    var nestedBagId = $"{matches[i]} {matches[i + 1]}";
+                    var nestedBag = GetOrAdd(nestedBagId);
+                    var nestedBagCount = int.Parse(matches[i - 1].ToString());
+
+                    bag.NestedBags.Add(nestedBag, nestedBagCount);
+                }
+
+                map.TryAdd(bag.Id, bag);
             }
 
-            var count = _map.Count(pair => BagContains(pair.Value, "shiny gold"));
 
-            Console.WriteLine(count);
-        }
+            return map;
 
-        private bool BagContains(Bag bag, string bagToCheck)
-        {
-            if (bag.NestedBags.Count == 0) return false;
-
-            if (bag.NestedBags.Any(b => b.Key == bagToCheck)) return true;
-
-            return bag.NestedBags.Any(b => BagContains(_map[b.Key], bagToCheck));
-        }
-    }
-
-    internal class TaskTwo
-    {
-        private readonly IDictionary<string, Bag> _map = new Dictionary<string, Bag>();
-
-        public TaskTwo(string[] list)
-        {
-            foreach (var row in list)
+            Bag GetOrAdd(string id)
             {
-                var bag = new Bag(row);
-                _map.Add(bag.Id, bag);
+                if (map.TryGetValue(id, out var bag)) return bag;
+
+                var newBag = new Bag(id);
+
+                map.Add(id, newBag);
+
+                return newBag;
+            }
+        }
+
+        private class TaskOne
+        {
+            private readonly IDictionary<string, Bag> _map;
+
+            public TaskOne(string[] list)
+            {
+                _map = CreateMap(list);
             }
 
-            var count = CountBags(_map["shiny gold"]);
-
-            // Minus the shiny gold bag itself
-            Console.WriteLine(count - 1);
-        }
-
-        private int CountBags(Bag bag)
-        {
-            return bag.NestedBags.Sum(b => b.Value * CountBags(_map[b.Key])) + 1;
-        }
-    }
-
-    internal class Bag
-    {
-        public readonly string Id;
-
-        public readonly Dictionary<string, int> NestedBags = new Dictionary<string, int>();
-
-        public Bag(string row)
-        {
-            var matches = Regex.Matches(row, @"\w+");
-
-            Id = $"{matches[0]} {matches[1]}";
-
-            // 5,6
-            // 9,10
-            // 13,14
-            for (var i = 5; i < matches.Count; i += 4)
+            public void Run()
             {
-                if (matches[i].Value == "other") continue;
-                
-                NestedBags.Add($"{matches[i]} {matches[i + 1]}", int.Parse(matches[i - 1].ToString()));
+                var count = _map.Count(pair => pair.Value.Contains(_map["shiny gold"]));
+
+                Console.WriteLine(count);
+            }
+        }
+
+        private class TaskTwo
+        {
+            private readonly IDictionary<string, Bag> _map;
+
+            public TaskTwo(string[] list)
+            {
+                _map = CreateMap(list);
+            }
+
+            public void Run()
+            {
+                var count = _map["shiny gold"].CountBags();
+
+                // Minus the shiny gold bag itself
+                Console.WriteLine(count - 1);
+            }
+        }
+
+        internal class Bag
+        {
+            public readonly string Id;
+
+            public readonly Dictionary<Bag, int> NestedBags = new Dictionary<Bag, int>();
+
+            public Bag(string id)
+            {
+                Id = id;
+            }
+
+            public override string ToString()
+            {
+                return Id;
+            }
+
+            public override int GetHashCode()
+            {
+                return Id.GetHashCode();
+            }
+
+            public bool Contains(Bag bag)
+            {
+                return NestedBags.Any(nested => nested.Key.Id == bag.Id)
+                       || NestedBags.Any(nested => nested.Key.Contains(bag));
+            }
+
+            public int CountBags()
+            {
+                return NestedBags.Sum(b => b.Value * b.Key.CountBags()) + 1;
             }
         }
     }
