@@ -4,9 +4,9 @@ using System.Linq;
 
 namespace Day_09
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             var input = File.ReadAllText("input.txt");
 
@@ -14,10 +14,9 @@ namespace Day_09
 
             var one = new TaskOne(list);
             var invalidItem = one.Run(25);
-            
+
             var two = new TaskTwo(list);
             two.Run(invalidItem);
-            
         }
 
         private class TaskOne
@@ -33,16 +32,13 @@ namespace Day_09
             {
                 for (var i = preambleLength; i < _list.Length; i += 1)
                 {
-                    if (IsValid(i))
-                    {
-                        continue;
-                    }
-                    
+                    if (IsValid(i)) continue;
+
                     Console.Out.WriteLine($"Invalid item! idx:{i} item:{_list[i]}");
-                    
+
                     return _list[i];
                 }
-                
+
                 throw new InvalidOperationException("No invalid item found");
 
                 bool IsValid(int index)
@@ -50,18 +46,20 @@ namespace Day_09
                     var previousItems = _list.Skip(index - preambleLength).Take(preambleLength).ToList();
 
                     var previousSums = previousItems.SelectMany(term1 =>
-                        previousItems.Where(term2 => term1 != term2).Select(term2 => term1 + term2));
+                        previousItems
+                            .Where(term2 => term1 != term2)
+                            .Select(term2 => term1 + term2));
 
                     return previousSums.Contains(_list[index]);
                 }
             }
         }
-        
+
         private class TaskTwo
         {
             private readonly long[] _list;
 
-            private (int startIndex, int length)? _contiguous;
+            private long[] _contiguous = Array.Empty<long>();
 
             public TaskTwo(string[] list)
             {
@@ -70,53 +68,35 @@ namespace Day_09
 
             public void Run(long invalidNumber)
             {
-                 for (var i = 0; i < _list.Length; i += 1)
-                 {
-                     var contiguousLength = GetContiguousLength(i);
+                for (var i = 0; i < _list.Length; i += 1)
+                {
+                    var contiguous = GetContiguous(i);
 
-                     if (contiguousLength == null)
-                     {
-                         continue;
-                     }
+                    if (_contiguous.Length < contiguous.Length) _contiguous = contiguous;
+                }
 
-                     if (_contiguous == null || _contiguous?.length < contiguousLength)
-                     {
-                         _contiguous = (i, contiguousLength.Value);
-                     }
-                 }
+                Console.WriteLine($"Weakness: {EncryptionWeakness()}");
 
-                 Console.WriteLine($"Weakness: {EncryptionWeakness()}");
+                long EncryptionWeakness()
+                {
+                    return _contiguous.Min() + _contiguous.Max();
+                }
 
-                 long EncryptionWeakness()
-                 {
-                     if (_contiguous == null)
-                     {
-                         throw new InvalidOperationException("No contiguous found!");
-                     }
+                long[] GetContiguous(int startIndex)
+                {
+                    long sum = 0;
 
-                     var range = _list.Skip(_contiguous.Value.startIndex).Take(_contiguous.Value.length).ToArray();
+                    var length = 0;
+                    for (var i = startIndex; i < _list.Length; i += 1)
+                    {
+                        if (sum >= invalidNumber) break;
 
-                     return range.Min() + range.Max();
-                 }
- 
-                 int? GetContiguousLength(int startIndex)
-                 {
-                     long sum = 0;
+                        sum += _list[i];
+                        length += 1;
+                    }
 
-                     var length = 0;
-                     for (var i = startIndex; i < _list.Length; i += 1)
-                     {
-                         if (sum >= invalidNumber)
-                         {
-                             break;
-                         }
-
-                         sum += _list[i];
-                         length += 1;
-                     }
-
-                     return sum == invalidNumber ? length : (int?) null;
-                 }               
+                    return sum != invalidNumber ? Array.Empty<long>() : _list.Skip(startIndex).Take(length).ToArray();
+                }
             }
         }
     }
