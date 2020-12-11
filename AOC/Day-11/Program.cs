@@ -12,10 +12,6 @@ one.Run();
 var two = new TaskTwo(list);
 two.Run();
 
-static Tile[][] CreateEmptyBoard(string[] lines)
-{
-}
-
 namespace Day_11
 {
     internal class TaskOne
@@ -25,6 +21,7 @@ namespace Day_11
         public TaskOne(string[] rows)
         {
             _tiles = Utils.CreateEmptyBoard(rows, 4);
+            
             for (var row = 0; row < _tiles.Length; row += 1)
             for (var col = 0; col < _tiles[row].Length; col += 1)
                 foreach (var adjacentTile in GetAdjacentTiles(row, col))
@@ -50,23 +47,7 @@ namespace Day_11
 
         public void Run()
         {
-            var allTiles = _tiles.SelectMany(s => s.Select(t => t)).ToList();
-
-            while (true)
-            {
-                var tilesToFlip = new HashSet<Tile>();
-
-                foreach (var tile in allTiles.Where(tile => tile.ShouldFlip()))
-                    tilesToFlip.Add(tile);
-
-                if (tilesToFlip.Count == 0) break;
-
-                foreach (var tile in tilesToFlip) tile.Flip();
-            }
-
-            var occupiedSeats = allTiles.Count(t => t.CurrentTile == TileType.Occupied);
-
-            Console.WriteLine($"Occupied seats: {occupiedSeats}");
+            _tiles.Run();
         }
     }
 
@@ -117,23 +98,7 @@ namespace Day_11
 
         public void Run()
         {
-            var allTiles = _tiles.SelectMany(s => s.Select(t => t)).ToList();
-
-            while (true)
-            {
-                var tilesToFlip = new HashSet<Tile>();
-
-                foreach (var tile in allTiles.Where(tile => tile.ShouldFlip()))
-                    tilesToFlip.Add(tile);
-
-                if (tilesToFlip.Count == 0) break;
-
-                foreach (var tile in tilesToFlip) tile.Flip();
-            }
-
-            var occupiedSeats = allTiles.Count(t => t.CurrentTile == TileType.Occupied);
-
-            Console.WriteLine($"Occupied seats: {occupiedSeats}");
+            _tiles.Run();
         }
     }
 
@@ -209,6 +174,27 @@ namespace Day_11
                     .Select((tile, col) => new Tile(col, row, (TileType) tile, requiredSeatsForOccupiedToFlip))
                     .ToArray())
                 .ToArray();
+        }
+
+        public static void Run(this Tile[][] board)
+        {
+            var allTiles = board.SelectMany(s => s.Select(t => t)).ToList();
+
+            while (true)
+            {
+                var tilesToFlip = new HashSet<Tile>();
+
+                foreach (var tile in allTiles.Where(tile => tile.ShouldFlip()))
+                    tilesToFlip.Add(tile);
+
+                if (tilesToFlip.Count == 0) break;
+
+                foreach (var tile in tilesToFlip) tile.Flip();
+            }
+
+            var occupiedSeats = allTiles.Count(t => t.CurrentTile == TileType.Occupied);
+
+            Console.WriteLine($"Occupied seats: {occupiedSeats}");
         }
     }
 }
