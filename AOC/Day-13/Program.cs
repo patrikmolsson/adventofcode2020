@@ -14,6 +14,7 @@ internal class TaskOne
 {
     private readonly Bus[] _buses;
     private readonly int _startTime;
+
     public TaskOne(string first, string buses)
     {
         _startTime = int.Parse(first);
@@ -28,59 +29,59 @@ internal class TaskOne
             var bus = _buses.SingleOrDefault(b => b.DepartsAt(currentTime));
             if (bus != null)
             {
-                Console.WriteLine($"Found bus {bus.BusId} at {currentTime}: {(currentTime - _startTime) * bus.BusId}");
+                Console.WriteLine($"#1 Found bus {bus.BusId} at {currentTime}: {(currentTime - _startTime) * bus.BusId}");
                 break;
             }
 
             currentTime += 1;
         }
-        
     }
 }
 
 internal class TaskTwo
 {
     private readonly Bus[] _buses;
-    
+
     public TaskTwo(string buses)
     {
-        _buses = buses.Split(',').Select((x, i) => new Bus(x != "x" ? int.Parse(x) : null, i)).ToArray();
+        _buses = buses
+            .Split(',')
+            .Select((s, i) =>
+                s != "x" ? new Bus(int.Parse(s), i) : null
+            )
+            .Where(bus => bus != null)
+            .ToArray();
     }
 
     public void Run()
     {
         var stopwatch = new Stopwatch();
         stopwatch.Start();
-        
+
         long stepSize = 1;
         long startTime = 1;
         for (var i = 0; i < _buses.Length; i++)
         {
             (startTime, stepSize) = GetSteps(startTime, stepSize, i + 1);
         }
-        
-        
+
         stopwatch.Stop();
         Console.WriteLine($"#2 Time with first sequence: {startTime}");
         Console.WriteLine($"#2 Time elapsed: {stopwatch.Elapsed}");
     }
 
-    private (long startTime, long stepSize) GetSteps(long startTime, long stepSize, int buses)
+    private (long startTime, long stepSize) GetSteps(long startTime, long stepSize, int busCount)
     {
         var time = startTime;
-
-        long? firstMatch = null;
+        var buses = _buses.Take(busCount).ToList();
 
         while (true)
         {
-            if (_buses.Take(buses).All(bus => bus.BusId == null || bus.DepartsAsSequence(time)))
+            if (buses.All(bus => bus.DepartsAsSequence(time)))
             {
-                if (firstMatch != null)
-                {
-                    return (firstMatch.Value, time - firstMatch.Value);
-                }
+                var frequency = buses.Aggregate(1L, (l, bus) => l * bus.BusId);
 
-                firstMatch = time;
+                return (time, frequency);
             }
 
             time += stepSize;
@@ -88,13 +89,13 @@ internal class TaskTwo
     }
 }
 
-internal record Bus(int? BusId, int Offset)
+internal record Bus(int BusId, int Offset)
 {
     public bool DepartsAsSequence(long time)
     {
         return DepartsAt(time + Offset);
     }
-    
+
     public bool DepartsAt(long time)
     {
         return time % BusId == 0;
