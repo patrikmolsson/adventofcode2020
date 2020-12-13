@@ -62,7 +62,7 @@ internal class TaskTwo
         long startTime = 1;
         for (var i = 0; i < _buses.Length; i++)
         {
-            (startTime, stepSize) = GetSteps(startTime, stepSize, i + 1);
+            GetSteps(ref startTime, ref stepSize, i + 1);
         }
 
         stopwatch.Stop();
@@ -70,18 +70,16 @@ internal class TaskTwo
         Console.WriteLine($"#2 Time elapsed: {stopwatch.Elapsed}");
     }
 
-    private (long startTime, long stepSize) GetSteps(long startTime, long stepSize, int busCount)
+    private void GetSteps(ref long time, ref long stepSize, int busCount)
     {
-        var time = startTime;
-        var buses = _buses.Take(busCount).ToList();
+        var newBus = _buses.ElementAt(busCount - 1);
 
         while (true)
         {
-            if (buses.All(bus => bus.DepartsAsSequence(time)))
+            if (newBus.DepartsAsSequence(time))
             {
-                var frequency = buses.Aggregate(1L, (l, bus) => l * bus.BusId);
-
-                return (time, frequency);
+                stepSize *= newBus.BusId;
+                break;
             }
 
             time += stepSize;
