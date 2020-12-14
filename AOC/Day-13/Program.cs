@@ -72,7 +72,7 @@ internal class TaskTwo
 
     private void GetSteps(ref long time, ref long stepSize, int busCount)
     {
-        var newBus = _buses.ElementAt(busCount - 1);
+        var newBus = _buses[busCount - 1];
 
         while (true)
         {
