@@ -4,10 +4,9 @@ using System.Diagnostics;
 
 var run = new Action<int>(turns =>
 {
-    var stopwatch = new Stopwatch();
+    var stopwatch = Stopwatch.StartNew();
 
-    stopwatch.Start();
-    var dict = new Dictionary<int, int>();
+    var numbersLastSpoken = new Dictionary<int, int>();
     var input = new[] {9, 6, 0, 10, 18, 2, 1};
 
     var lastSpokenNumber = 0;
@@ -17,20 +16,20 @@ var run = new Action<int>(turns =>
         var numberToSpeak = GetNumberToSpeak(turn);
 
         lastSpokenNumber = numberToSpeak;
-        lastSpokenNumberLastSpokenPrior = dict.GetValueOrDefault(lastSpokenNumber);
+        lastSpokenNumberLastSpokenPrior = numbersLastSpoken.GetValueOrDefault(lastSpokenNumber);
 
-        dict[lastSpokenNumber] = turn;
+        numbersLastSpoken[lastSpokenNumber] = turn;
     }
 
     stopwatch.Stop();
 
     Console.WriteLine($"#[{turns:n0}]: {lastSpokenNumber}. Run time: {stopwatch.Elapsed}");
-    
+
     int GetNumberToSpeak(int turn)
     {
         if (turn <= input.Length) return input[turn - 1];
 
-        var last = dict[lastSpokenNumber];
+        var last = numbersLastSpoken[lastSpokenNumber];
 
         return lastSpokenNumberLastSpokenPrior == 0 ? 0 : last - lastSpokenNumberLastSpokenPrior;
     }
