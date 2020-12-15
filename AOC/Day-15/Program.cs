@@ -10,13 +10,14 @@ var run = new Action<int>(turns =>
     var input = new[] {9, 6, 0, 10, 18, 2, 1};
 
     var lastSpokenNumber = 0;
-    var lastSpokenNumberLastSpokenPrior = 0;
+    var nextNumberToSpeak = input[0];
+
     for (var turn = 1; turn <= turns; turn++)
     {
-        var numberToSpeak = GetNumberToSpeak(turn);
+        var numberToSpeak = nextNumberToSpeak;
 
         lastSpokenNumber = numberToSpeak;
-        lastSpokenNumberLastSpokenPrior = numbersLastSpoken.GetValueOrDefault(lastSpokenNumber);
+        nextNumberToSpeak = GetNumberToSpeak(turn + 1);
 
         numbersLastSpoken[lastSpokenNumber] = turn;
     }
@@ -29,9 +30,9 @@ var run = new Action<int>(turns =>
     {
         if (turn <= input.Length) return input[turn - 1];
 
-        var last = numbersLastSpoken[lastSpokenNumber];
+        var prior = numbersLastSpoken.GetValueOrDefault(lastSpokenNumber);
 
-        return lastSpokenNumberLastSpokenPrior == 0 ? 0 : last - lastSpokenNumberLastSpokenPrior;
+        return prior == default ? 0 : turn - 1 - prior;
     }
 });
 
