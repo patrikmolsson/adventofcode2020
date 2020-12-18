@@ -1,81 +1,96 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-
 var input = File.ReadAllText("input.txt");
-
 var rows = input.Split(Environment.NewLine).ToArray();
-
-var expressions = new List<Expression>();
-
-foreach (var row in rows.Select(r => Regex.Replace(r, @"\s+", "")))
+var run = new Action<bool, string>((plusStrongerPreference, label) =>
 {
-    var chars = row.ToCharArray();
-    var pointer = -1;
+    var stopwatch = Stopwatch.StartNew();
 
-    expressions.Add(GetNestedExpression());
-
-    Expression GetNestedExpression()
+    var expressions = new List<ExpressionPart>();
+    foreach (var row in rows.Select(r => Regex.Replace(r, @"\s+", "")))
     {
-        var operators = new List<char>();
-        var terms = new List<Term>();
+        var chars = row.ToCharArray();
+        var pointer = -1;
 
-        while (pointer < chars.Length - 1)
+        expressions.Add(GetNestedExpression());
+
+        ExpressionPart GetNestedExpression()
         {
+            var operators = new List<char>();
+            var terms = new List<Part>();
             pointer += 1;
 
-            switch (chars[pointer])
+            while (pointer < chars.Length)
             {
-                case '(':
-                    terms.Add(GetNestedExpression());
-                    break;
-                case ')':
-                    return new Expression(terms.ToArray(), operators.ToArray());
-                case '+':
-                case '*':
-                    operators.Add(chars[pointer]);
-                    break;
-                default:
-                    terms.Add(new NumberTerm(int.Parse(chars[pointer].ToString())));
-                    break;
+                var op = chars[pointer];
+
+                switch (op)
+                {
+                    case '+':
+                    case '*':
+                        operators.Add(op);
+                        break;
+                    case '(':
+                        terms.Add(GetNestedExpression());
+                        break;
+                    case ')':
+                        return new ExpressionPart(terms, operators, plusStrongerPreference);
+                    default:
+                        terms.Add(new NumberPart(int.Parse(op.ToString())));
+                        break;
+                }
+
+                pointer += 1;
             }
+
+            return new ExpressionPart(terms, operators, plusStrongerPreference);
         }
-        
-        return new Expression(terms.ToArray(), operators.ToArray());
     }
-}
 
-var sum = expressions.Aggregate(0L, (l, expression) => l + expression.Evaluate());
+    var sum = expressions.Aggregate(0L, (l, expression) => l + expression.Evaluate());
+    stopwatch.Stop();
 
-Console.WriteLine($"{sum}");
+    Console.WriteLine($"[{label}] Sum: {sum}");
+    Console.WriteLine($"[{label}] Time: {stopwatch.Elapsed}");
+    Console.WriteLine();
+});
+var taskOne = new Action(() => run(false, "One"));
+var taskTwo = new Action(() => run(true, "Two"));
+taskOne();
+taskTwo();
 
-internal abstract record Term
+internal abstract record Part
 {
     public abstract long Evaluate();
 }
 
-record NumberTerm(int Number): Term
-{
-    public override long Evaluate() => Number;
-}
-
-record Expression(Term[] Terms, char[] Operators): Term
+internal record NumberPart(long Number) : Part
 {
     public override long Evaluate()
     {
-        var value = Terms[0].Evaluate();
-        
-        for (var i = 1; i < Terms.Length; i += 1)
-        {
-            value = NewValue(Operators[i - 1], Terms[i]);
-        }
+        return Number;
+    }
+}
+
+internal record ExpressionPart(IList<Part> Parts, IList<char> Operators, bool PlusStrongerPreference) : Part
+{
+    public override long Evaluate()
+    {
+        if (PlusStrongerPreference)
+            EvaluatePluses();
+
+        var value = Parts[0].Evaluate();
+
+        for (var i = 1; i < Parts.Count; i += 1) value = NewValue(Operators[i - 1], Parts[i]);
 
         return value;
 
-        long NewValue(char mOperator, Term nextTerm)
+        long NewValue(char mOperator, Part nextTerm)
         {
             return mOperator switch
             {
@@ -84,9 +99,18 @@ record Expression(Term[] Terms, char[] Operators): Term
                 _ => throw new ArgumentOutOfRangeException(nameof(mOperator), mOperator, null)
             };
         }
+
+        void EvaluatePluses()
+        {
+            while (Operators.Contains('+'))
+            {
+                var idx = Operators.IndexOf('+');
+
+                Parts[idx] = new NumberPart(Parts[idx].Evaluate() + Parts[idx + 1].Evaluate());
+
+                Parts.RemoveAt(idx + 1);
+                Operators.RemoveAt(idx);
+            }
+        }
     }
 }
-
-
-
-
