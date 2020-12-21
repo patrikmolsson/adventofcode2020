@@ -1,12 +1,13 @@
 ﻿#nullable enable
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-var input = File.ReadAllText("example.txt");
+var input = File.ReadAllText("input.txt");
 
 var tileStrings = input.Split($"{Environment.NewLine}{Environment.NewLine}").ToArray();
 
@@ -19,24 +20,7 @@ var tiles = tileStrings.Select(tileString =>
 
     fullTiles[id] = rows[1..];
 
-    var top = rows[1];
-    var bottom = ReverseString(rows[^1]);
-
-    var rightSide = new StringBuilder();
-    var leftSide = new StringBuilder();
-    foreach (var row in rows[1..])
-    {
-        rightSide.Append(row[^1]);
-        leftSide.Append(row[0]);
-    }
-
-    return new Tile(id, new []
-    {
-        top,
-        rightSide.ToString(),
-        bottom,
-        ReverseString(leftSide.ToString())
-    });
+    return new Tile(id, rows[1..]);
 }).ToArray();
 
 // var tests = new Action(() =>
@@ -44,10 +28,10 @@ var tiles = tileStrings.Select(tileString =>
 //     // var t1489 = tiles.Single(t => t.Id == 1489).FlipVertical();
 //     // var t2473 = tiles.Single(t => t.Id == 2473).Rotate(3).FlipHorizontal();
 //     // var t1171 = tiles.Single(t => t.Id == 1171).FlipHorizontal();
-//     var t1489 = tiles.Single(t => t.Id == 1489).FlipVertical();
-//     var t2473 = tiles.Single(t => t.Id == 2473).Rotate(3).FlipHorizontal();
+//     var t1489 = tiles.Single(t => t.Id == 1489).Rotate(2).FlipHorizontal();
+//     var t2473 = tiles.Single(t => t.Id == 2473).Rotate(1).FlipHorizontal();
 //     var t1171 = tiles.Single(t => t.Id == 1171);
-//     var t2311 = tiles.Single(t => t.Id == 2311).FlipVertical();
+//     var t2311 = tiles.Single(t => t.Id == 2311).Rotate(2).FlipHorizontal();
 //     var t3079 = tiles.Single(t => t.Id == 3079);
 //     var t3079RotatedCorrectly = tiles.Single(t => t.Id == 3079);
 //
@@ -67,7 +51,8 @@ var one = new Action(() =>
 
     var grid = new Dictionary<(int x, int y), Tile?>
     {
-        {(0, 0), tiles[0]}
+        {(0, 0), tiles[0].Rotate(1)} // Trial-and-error
+        // {(0, 0), tiles[0].Rotate(3)}
     };
 
     var queue = new Queue<(int x, int y)>();
@@ -203,28 +188,96 @@ var one = new Action(() =>
     for (var yPos = minYCoordinate; yPos <= maxYCoordinate; yPos++)
     {
         var tile = grid[(xPos, yPos)];
-        var fullData = fullTiles[tile.Id];
         
-        for (var yOff = 1; yOff < fullData.Length - 1; yOff++)
-        for (var xOff = 1; xOff < fullData[yOff].Length - 1; xOff++)
+        for (var yOff = 1; yOff < tile.Rows.Length - 1; yOff++)
+        for (var xOff = 1; xOff < tile.Rows[yOff].Length - 1; xOff++)
         {
-            var x = xPos * (fullData[yOff].Length - 2) + xOff - 1;
-            var y = yPos * (fullData.Length - 2) + yOff - 1;
+            var x = xPos * (tile.Rows[yOff].Length - 2) + xOff - 1;
+            var y = yPos * (tile.Rows.Length - 2) - (yOff - 1);
 
-            // They need to be rotated correctly first!!!
-            fullGrid.Add((x, y), fullData[yOff][xOff]);
+            fullGrid.Add((x, y), tile.Rows[yOff][xOff]);
         }
     }
     
-    PrintGrid();
+
+    var coordinatesWithSeaMonster = new HashSet<(int x, int y)>();
+
+    foreach (var coord in fullGrid.Keys)
+    {
+        if (HasMonsterStartingAt(coord))
+        {
+            Console.WriteLine($"hello from {coord}");
+        }
+    }
+    
+    // PrintGrid();
+    // Console.WriteLine();
+
+    foreach (var coord in coordinatesWithSeaMonster)
+    {
+        fullGrid[coord] = 'O';
+    }
+    
+    // PrintGrid();
+
+    var roughness = fullGrid.Count(s => s.Value == '#');
+    
+    Console.WriteLine($"Roughness: {roughness}");
+
+    bool HasMonsterStartingAt((int x, int y) coordinate)
+    {
+        // Monster:
+        //                  # 
+        //#    ##    ##    ###
+        // #  #  #  #  #  #   
+
+        var coords = GenerateCoordinates();
+        
+        var hasMonster = GenerateCoordinates().All(c => fullGrid.TryGetValue(c, out var character) && !coordinatesWithSeaMonster.Contains(c)  && character == '#');
+
+        if (hasMonster)
+        {
+            coordinatesWithSeaMonster.UnionWith(coords);
+        }
+
+        return hasMonster;
+        
+        IEnumerable<(int x, int y)> GenerateCoordinates()
+        {
+            // Top row
+            yield return (coordinate.x + 18, coordinate.y);
+            
+            // Middle row
+            var middleRowOffsets = new int[]
+            {
+                0, 5, 6, 11, 12, 17, 18, 19
+            };
+
+            foreach (var offset in middleRowOffsets)
+            {
+                yield return (coordinate.x + offset, coordinate.y - 1);
+            }
+            
+            var bottomRowOffsets = new int[]
+            {
+                1, 4, 7, 10, 13, 16
+            };
+
+            foreach (var offset in bottomRowOffsets)
+            {
+                yield return (coordinate.x + offset, coordinate.y - 2);
+            }
+        }
+    }
+    
 
     void PrintGrid()
     {
         var minX = minXCoordinate * 8;
-        var minY = minYCoordinate * 8;
+        var minY = minYCoordinate * 8 - 7;
 
         var maxX = maxXCoordinate * 8 + 7;
-        var maxY = maxYCoordinate * 8 + 7;
+        var maxY = maxYCoordinate * 8;
 
         for (var y = maxY; y >= minY; y--)
         {
@@ -245,7 +298,7 @@ static string ReverseString(string input)
 {
     return new(input.Reverse().ToArray());
 }
-record Tile(int Id, string[] Edges)
+record Tile(int Id, string[] Rows)
 {
     public bool MatchesDirection(Tile tile, Direction direction)
     {
@@ -257,59 +310,63 @@ record Tile(int Id, string[] Edges)
         {
             return direction switch
             {
-                Direction.Above => (Edges[0], ReverseString(tile.Edges[2])),
-                Direction.Right => (Edges[1], ReverseString(tile.Edges[3])),
-                Direction.Below => (Edges[2], ReverseString(tile.Edges[0])),
-                Direction.Left => (Edges[3], ReverseString(tile.Edges[1])),
+                Direction.Above => (Rows[0], tile.Rows[^1]),
+                Direction.Right => (GetRightColumn(), tile.GetLeftColumn()),
+                Direction.Below => (Rows[^1], tile.Rows[0]),
+                Direction.Left => (GetLeftColumn(), tile.GetRightColumn()),
                 _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, null)
             };
         }
     }
 
-    public Tile FlipVertical()
-    {
-        return new(Id, new[]
-        {
-            ReverseString(Edges[2]),
-            ReverseString(Edges[1]),
-            ReverseString(Edges[0]),
-            ReverseString(Edges[3]),
-        });
-    }
+    private string GetRightColumn() => new(Rows.Select(r => r[^1]).ToArray());
+    
+    private string GetLeftColumn() => new(Rows.Select(r => r[0]).ToArray());
 
     public IEnumerable<Tile> AllCombinations()
     {
         return Enumerable.Range(0, 4).SelectMany(i => new[] {Rotate(i), FlipHorizontal().Rotate(i)});
     }
 
-    private Tile FlipHorizontal()
+    public Tile FlipHorizontal()
     {
-        return new(Id, new[]
-        {
-            ReverseString(Edges[0]),
-            ReverseString(Edges[3]),
-            ReverseString(Edges[2]),
-            ReverseString(Edges[1])
-        });
+        return new(Id, Rows.Select(ReverseString).ToArray());
     }
 
     /// <summary>
     /// Rotates 90 deg clock-wise specified number of times
     /// </summary>
-    private Tile Rotate(int times)
+    public Tile Rotate(int times)
     {
+        
         return Enumerable.Range(0, times).Aggregate(this, (tile, i) => tile.Rotate());
     }
 
     private Tile Rotate()
     {
-        return new (Id, new[]
+        var grid = new char[Rows.Length, Rows.Length];
+
+        for (var y = 0; y < Rows.Length; y++)
+        for (var x = 0; x < Rows[y].Length; x++)
         {
-            Edges[3],
-            Edges[0],
-            Edges[1],
-            Edges[2]
-        });
+            grid[x, y] = Rows[y][x];
+        }
+
+        var rot = RotateMatrix(grid, Rows.Length);
+
+        var rows = new string[Rows.Length];
+        for (var y = 0; y < Rows.Length; y++)
+        {
+            var row = new StringBuilder();
+            for (var x = 0; x < Rows[y].Length; x++)
+            {
+                row.Append(rot[x, y]);
+            }
+
+            rows[y] = row.ToString();
+        }
+        
+        return new (Id, rows);
     }
 
 
@@ -318,6 +375,18 @@ record Tile(int Id, string[] Edges)
         return new(input.Reverse().ToArray());
     }
 
+    private static char[,] RotateMatrix(char[,] matrix, int n)
+    {
+        var ret = new char[n,n];
+
+        for (var i = 0; i < n; ++i) {
+            for (var j = 0; j < n; ++j) {
+                ret[i, j] = matrix[n - j - 1, i];
+            }
+        }
+
+        return ret;
+    }
 };
 
 enum Direction
