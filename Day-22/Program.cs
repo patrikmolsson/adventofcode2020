@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-var i = File.ReadAllText("input.txt");
-var groups = i.Split($"{Environment.NewLine}{Environment.NewLine}");
 var decks = BuildDecks();
 
 void One()
@@ -30,25 +28,20 @@ void Run(bool recursive)
 One();
 Two();
 
-Queue<int>[] BuildDecks()
+static Queue<int>[] BuildDecks()
 {
-    var tempDecks = new Queue<int>[]
-    {
-        new(),
-        new()
-    };
+    var i = File.ReadAllText("input.txt");
+    var groups = i.Split($"{Environment.NewLine}{Environment.NewLine}");
 
-    for (var group = 0; group < groups.Length; group++)
-        foreach (var number in groups[group].Split(Environment.NewLine)[1..])
-            tempDecks[group].Enqueue(int.Parse(number));
-
-    return tempDecks;
+    return groups
+        .Select(group => new Queue<int>(group.Split(Environment.NewLine)[1..].Select(int.Parse)))
+        .ToArray();
 }
 
 static (int lastWinner, Queue<int>[] decks) StartGame(Queue<int>[] decks, bool supportsRecursive)
 {
     var previousRounds = new HashSet<string>();
-    var lastWinner = 1;
+    var lastWinner = -1;
     while (decks.All(deck => deck.Any()))
     {
         var hash = CalculateHash(decks);
@@ -60,14 +53,20 @@ static (int lastWinner, Queue<int>[] decks) StartGame(Queue<int>[] decks, bool s
 
         // Should start recursive?
         if (supportsRecursive && decks[0].Count >= cardOne && decks[1].Count >= cardTwo)
-            lastWinner = StartGame(new Queue<int>[]
+        {
+            var results = StartGame(new Queue<int>[]
             {
                 new(decks[0].Take(cardOne)),
                 new(decks[1].Take(cardTwo))
-            }, true).lastWinner;
-        // Fall-back to higher card wins
+            }, true);
+
+            lastWinner = results.lastWinner;
+        }
+        // Fall back to higher card wins
         else
+        {
             lastWinner = cardOne > cardTwo ? 0 : 1;
+        }
 
         if (lastWinner == 0)
         {
@@ -91,24 +90,20 @@ static string CalculateHash(Queue<int>[] decks)
 
 static int CalculateScore(Queue<int> deck)
 {
-    var s = 0;
-
-    var multiplier = deck.Count;
-    foreach (var card in deck)
-    {
-        s += multiplier * card;
-        multiplier--;
-    }
-
-    return s;
+    return deck.Reverse().Select((num, i) => num * (i + 1)).Sum();
 }
 
 static void LogFinal(Queue<int>[] decks)
 {
+    Console.WriteLine();
+
+    var player = 1;
     foreach (var deck in decks)
     {
         var line = string.Join(",", deck);
 
-        Console.WriteLine($"XX: {line}");
+        Console.WriteLine($"Player {player}: {line}");
+
+        player++;
     }
 }
