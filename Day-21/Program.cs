@@ -14,20 +14,13 @@ foreach (var row in rows)
 {
     var parts = row.Split(" (");
 
-    var candidates = Regex.Matches(parts[0], @"\w+");
+    var candidates = Regex.Matches(parts[0], @"\w+").Select(s => s.ToString()).ToList();
 
-    foreach (var candidateMatch in candidates)
+    foreach (var candidate in candidates)
     {
-        var candidate = candidateMatch.ToString();
-        if (foodCount.TryGetValue(candidate, out var count))
-        {
-            foodCount[candidate] = count + 1;
-        }
-        else
-        {
-            foodCount[candidate] = 1;
-        }
-        
+        foodCount.TryGetValue(candidate, out var count);
+            
+        foodCount[candidate] = count + 1;
     }
     
     var allergens = Regex.Matches(parts[1], @"\w+").ToArray()[1..];
@@ -35,12 +28,15 @@ foreach (var row in rows)
     foreach (var allergenMatch in allergens)
     {
         var allergen = allergenMatch.ToString();
+        
         if (!allergenToCandidates.ContainsKey(allergen))
         {
-            allergenToCandidates[allergen] = candidates.Select(s => s.ToString()).ToHashSet();
+            allergenToCandidates[allergen] = candidates.ToHashSet();
         }
-        
-        allergenToCandidates[allergen].IntersectWith(candidates.Select(s => s.ToString()));
+        else
+        {
+            allergenToCandidates[allergen].IntersectWith(candidates);
+        }
     }
 }
 

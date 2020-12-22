@@ -1,6 +1,5 @@
 ﻿#nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,39 +10,14 @@ var input = File.ReadAllText("input.txt");
 
 var tileStrings = input.Split($"{Environment.NewLine}{Environment.NewLine}").ToArray();
 
-var fullTiles = new Dictionary<int, string[]>();
-
 var tiles = tileStrings.Select(tileString =>
 {
     var rows = tileString.Split(Environment.NewLine);
+    
+    // First row is the tile number
     var id = int.Parse(Regex.Match(rows[0], @"\d+").ToString());
-
-    fullTiles[id] = rows[1..];
-
     return new Tile(id, rows[1..]);
 }).ToArray();
-
-// var tests = new Action(() =>
-// {
-//     // var t1489 = tiles.Single(t => t.Id == 1489).FlipVertical();
-//     // var t2473 = tiles.Single(t => t.Id == 2473).Rotate(3).FlipHorizontal();
-//     // var t1171 = tiles.Single(t => t.Id == 1171).FlipHorizontal();
-//     var t1489 = tiles.Single(t => t.Id == 1489).Rotate(2).FlipHorizontal();
-//     var t2473 = tiles.Single(t => t.Id == 2473).Rotate(1).FlipHorizontal();
-//     var t1171 = tiles.Single(t => t.Id == 1171);
-//     var t2311 = tiles.Single(t => t.Id == 2311).Rotate(2).FlipHorizontal();
-//     var t3079 = tiles.Single(t => t.Id == 3079);
-//     var t3079RotatedCorrectly = tiles.Single(t => t.Id == 3079);
-//
-//     var t1171matchboth = t1171.AllCombinations().Where(c =>
-//         c.MatchesDirection(t1489, Direction.Left) && c.MatchesDirection(t2473, Direction.Above)
-//     ).ToList();
-//     
-//     var t3079MatchSingle = t3079.AllCombinations().Where(c => c.MatchesDirection(t2311, Direction.Left)).ToList();
-//     var t3079MatchBoth = t3079.AllCombinations().Where(c => c.MatchesDirection(t2311, Direction.Left) && c.MatchesDirection(t2473, Direction.Below)).ToList();
-// });
-//
-// tests();
 
 var one = new Action(() =>
 {
@@ -51,8 +25,7 @@ var one = new Action(() =>
 
     var grid = new Dictionary<(int x, int y), Tile?>
     {
-        {(0, 0), tiles[0].Rotate(1)} // Trial-and-error
-        // {(0, 0), tiles[0].Rotate(3)}
+        {(0, 0), tiles[0].Rotate(1)} // This is just trial-and-error. We can rotate the sea monster (or the puzzle) instead and keep rotating/flipping until we match
     };
 
     var queue = new Queue<(int x, int y)>();
@@ -71,36 +44,24 @@ var one = new Action(() =>
         
         var adjacentTilesInGrid = TilesAdjacentToCoordinate(coordinate).ToList();
 
-        if (!adjacentTilesInGrid.Any())
-        {
-            grid[coordinate] = null;
-            continue;
-        }
-
-        var matches = availableTiles
+        var match = availableTiles
             .SelectMany(t => t.AllCombinations())
-            .Where(t =>
-                adjacentTilesInGrid.All(adjacent => t.MatchesDirection(adjacent.tile, adjacent.direction)))
-            .ToList();
-
-        if (matches.Count > 1)
-        {
-            Console.WriteLine(matches);
-            continue;
-        }
-
-        var match = matches.SingleOrDefault();
+            .SingleOrDefault(t =>
+                adjacentTilesInGrid.All(adjacent => t.MatchesDirection(adjacent.tile, adjacent.direction)));
+        
         grid[coordinate] = match;
 
-        if (match is not null)
+        if (match is null)
         {
-            foreach (var coord in AdjacentCoordinates(coordinate))
-            {
-                queue.Enqueue(coord);
-            }
-            
-            availableTiles = availableTiles.Where(t => t.Id != match.Id).ToList();
+            continue;
         }
+        
+        foreach (var coord in AdjacentCoordinates(coordinate))
+        {
+            queue.Enqueue(coord);
+        }
+        
+        availableTiles = availableTiles.Where(t => t.Id != match.Id).ToList();
     }
 
     IEnumerable<(Direction direction, Tile tile)> TilesAdjacentToCoordinate((int x, int y) coord)
@@ -111,12 +72,13 @@ var one = new Action(() =>
             (coord.x + 1, coord.y, Direction.Right),
             (coord.x, coord.y - 1, Direction.Below),
             (coord.x, coord.y + 1, Direction.Above),
-        }.Select(c => (c.direction, grid.GetValueOrDefault((c.x, c.y)))).Where(t => t.Item2 != null) as IEnumerable<(Direction, Tile)>;
+        }
+            .Select(c => (c.direction, grid.GetValueOrDefault((c.x, c.y))))
+            .Where(t => t.Item2 != null)!;
     }
 
     static IEnumerable<(int x, int y)> AdjacentCoordinates((int x, int y) coord)
     {
-
         return new (int x, int y)[]
         {
             (coord.x - 1, coord.y),
@@ -126,43 +88,6 @@ var one = new Action(() =>
         };
     }
             
-
-    static IEnumerable<(int x, int y)> GetCoordinates()
-    {
-        // (di, dj) is a vector - direction in which we move right now
-        var di = 1;
-        var dj = 0;
-        var segmentLength = 1;
-
-        // current position (i, j) and how much of current segment we passed
-        var i = 0;
-        var j = 0;
-        var segmentPassed = 0;
-        for (var k = 0; k < 144 * 4; ++k) {
-            // make a step, add 'direction' vector (di, dj) to current position (i, j)
-            i += di;
-            j += dj;
-            ++segmentPassed;
-
-            yield return (i, j);
-
-            if (segmentPassed != segmentLength) continue;
-            
-            // done with current segment
-            segmentPassed = 0;
-
-            // 'rotate' directions
-            var buffer = di;
-            di = -dj;
-            dj = buffer;
-
-            // increase segment length if necessary
-            if (dj == 0) {
-                ++segmentLength;
-            }
-        }
-    }
-
     var placedTiles = grid.Where(d => d.Value != null).ToList();
     var maxXCoordinate = placedTiles.Max(s => s.Key.x);
     var maxYCoordinate = placedTiles.Max(s => s.Key.y);
@@ -177,9 +102,9 @@ var one = new Action(() =>
         grid[(minXCoordinate, minYCoordinate)],
     };
 
-    var product = cornerTiles.Aggregate(1L, (l, tile) => l * tile.Id);
+    var product = cornerTiles.Aggregate(1L, (l, tile) => l * tile!.Id);
     
-    Console.WriteLine(product);
+    Console.WriteLine($"[One] Product: {product}");
     
     // Task two
     var fullGrid = new Dictionary<(int x, int y), char>();
@@ -189,7 +114,7 @@ var one = new Action(() =>
     {
         var tile = grid[(xPos, yPos)];
         
-        for (var yOff = 1; yOff < tile.Rows.Length - 1; yOff++)
+        for (var yOff = 1; yOff < tile!.Rows.Length - 1; yOff++)
         for (var xOff = 1; xOff < tile.Rows[yOff].Length - 1; xOff++)
         {
             var x = xPos * (tile.Rows[yOff].Length - 2) + xOff - 1;
@@ -198,16 +123,14 @@ var one = new Action(() =>
             fullGrid.Add((x, y), tile.Rows[yOff][xOff]);
         }
     }
-    
 
     var coordinatesWithSeaMonster = new HashSet<(int x, int y)>();
 
     foreach (var coord in fullGrid.Keys)
     {
-        if (HasMonsterStartingAt(coord))
-        {
-            Console.WriteLine($"hello from {coord}");
-        }
+        var monsterCoordinates = MonsterCoordinatesStartingAt(coord);
+
+        coordinatesWithSeaMonster.UnionWith(monsterCoordinates);
     }
     
     // PrintGrid();
@@ -222,33 +145,34 @@ var one = new Action(() =>
 
     var roughness = fullGrid.Count(s => s.Value == '#');
     
-    Console.WriteLine($"Roughness: {roughness}");
+    Console.WriteLine($"[Two] Roughness: {roughness}");
 
-    bool HasMonsterStartingAt((int x, int y) coordinate)
+    IEnumerable<(int x, int y)> MonsterCoordinatesStartingAt((int x, int y) coordinate)
     {
-        // Monster:
-        //                  # 
-        //#    ##    ##    ###
-        // #  #  #  #  #  #   
-
         var coords = GenerateCoordinates();
         
-        var hasMonster = GenerateCoordinates().All(c => fullGrid.TryGetValue(c, out var character) && !coordinatesWithSeaMonster.Contains(c)  && character == '#');
+        var hasMonster = GenerateCoordinates().All(c => fullGrid.TryGetValue(c, out var character) && !coordinatesWithSeaMonster.Contains(c) && character == '#');
 
-        if (hasMonster)
+        if (!hasMonster)
         {
-            coordinatesWithSeaMonster.UnionWith(coords);
+            return Enumerable.Empty<(int x, int y)>();
         }
-
-        return hasMonster;
         
+        Console.WriteLine($"Monster found at {coordinate}");
+        return coords;
+
         IEnumerable<(int x, int y)> GenerateCoordinates()
         {
+            // Monster:
+            //                  # 
+            //#    ##    ##    ###
+            // #  #  #  #  #  #   
+            
             // Top row
             yield return (coordinate.x + 18, coordinate.y);
             
             // Middle row
-            var middleRowOffsets = new int[]
+            var middleRowOffsets = new[]
             {
                 0, 5, 6, 11, 12, 17, 18, 19
             };
@@ -258,7 +182,7 @@ var one = new Action(() =>
                 yield return (coordinate.x + offset, coordinate.y - 1);
             }
             
-            var bottomRowOffsets = new int[]
+            var bottomRowOffsets = new[]
             {
                 1, 4, 7, 10, 13, 16
             };
@@ -285,7 +209,7 @@ var one = new Action(() =>
             
             for (var x = minX; x <= maxX; x++)
             {
-                line.Append(fullGrid[(x, y)]);
+                line.Append(fullGrid![(x, y)]);
             }
             
             Console.WriteLine(line);
@@ -294,11 +218,7 @@ var one = new Action(() =>
 });
 one();
 
-static string ReverseString(string input)
-{
-    return new(input.Reverse().ToArray());
-}
-record Tile(int Id, string[] Rows)
+internal record Tile(int Id, string[] Rows)
 {
     public bool MatchesDirection(Tile tile, Direction direction)
     {
@@ -338,8 +258,14 @@ record Tile(int Id, string[] Rows)
     /// </summary>
     public Tile Rotate(int times)
     {
+        var tile = this;
         
-        return Enumerable.Range(0, times).Aggregate(this, (tile, i) => tile.Rotate());
+        for (var i = 0; i < times; i++)
+        {
+            tile = tile.Rotate();
+        }
+
+        return tile;
     }
 
     private Tile Rotate()
