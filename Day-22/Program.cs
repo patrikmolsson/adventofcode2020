@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -17,12 +18,16 @@ void Two()
 
 void Run(bool recursive)
 {
+    var s = Stopwatch.StartNew();
+    
     var results = StartGame(decks.Select(d => new Queue<int>(d)).ToArray(), recursive);
 
     LogFinal(results.decks);
     var score = CalculateScore(results.decks[results.lastWinner]);
 
+    var elapsed = s.Elapsed;
     Console.WriteLine(score);
+    Console.WriteLine($"Ran for {elapsed}");
 }
 
 One();
