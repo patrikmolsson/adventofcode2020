@@ -120,12 +120,12 @@ internal class Cup
     {
         var c = this;
 
-        do
+        while (c != null)
         {
             if (c.Number == number) return true;
 
             c = c.Next;
-        } while (c != null);
+        }
 
         return false;
     }
