@@ -5,7 +5,6 @@ using System.Linq;
 
 var one = new Action(() =>
 {
-    // var input = "389125467";
     var input = "469217538";
 
     var cups = input.ToCharArray().Select(s => int.Parse(s.ToString())).ToList();
@@ -26,15 +25,12 @@ var one = new Action(() =>
         // Where to place it?
         var destinationCup = activeCup - 1;
 
-        while (!cups.Contains(destinationCup))
-        {
-            destinationCup = destinationCup == 0 ? cups.Max() : destinationCup - 1;
-        }
+        while (!cups.Contains(destinationCup)) destinationCup = destinationCup == 0 ? cups.Max() : destinationCup - 1;
 
         var indexOfDestinationCup = cups.IndexOf(destinationCup);
-        
+
         cups.InsertRange(indexOfDestinationCup + 1, pickedUpCups);
-        
+
         // Calculate new active cup
         activeIndex = cups.IndexOf(activeCup);
 
@@ -45,78 +41,68 @@ var one = new Action(() =>
 
     var str = string.Join("", cups.Concat(cups).Skip(indexOfOne + 1).TakeWhile(s => s != 1).Select(s => s.ToString()));
 
-    Console.WriteLine($"String: {str}");
+    Console.WriteLine($"[One] String: {str}");
 });
-
-
 var two = new Action(() =>
-{    
-    // var input = "389125467";
-     var input = "469217538";
- 
-     var cups = new Dictionary<int, Cup>();
+{
+    var stopwatch = Stopwatch.StartNew();
+    var input = "469217538";
 
-     // Build graph
-     Cup lastCup = null;
-     var cupNumbers = input.ToCharArray().Select(s => int.Parse(s.ToString()))
-         .Concat(Enumerable.Range(10, 999_991))
-         .ToArray();
-     
-     foreach (var cupNumber in cupNumbers)
-     {
-         var current = new Cup(cupNumber);
-         cups.Add(cupNumber, current);
+    var cups = new Dictionary<int, Cup>();
 
-         if (lastCup != null)
-         {
-             lastCup.Next = current;
-         }
-         
-         lastCup = current;
-     }
+    // Build graph
+    Cup lastCup = null;
+    var cupNumbers = input.ToCharArray().Select(s => int.Parse(s.ToString()))
+        .Concat(Enumerable.Range(10, 999_991))
+        .ToArray();
 
-     lastCup.Next = cups[cupNumbers[0]];
-     
-     var activeCupNumber = cupNumbers[0];
-     var moves = 10_000_000;
-     for (var i = 1; i <= moves; i++)
-     {
-         var activeCup = cups[activeCupNumber];
-         
-         var startPickedUp = activeCup.Next;
-         var endPickedUp = activeCup.Third;
+    foreach (var cupNumber in cupNumbers)
+    {
+        var current = new Cup(cupNumber);
+        cups.Add(cupNumber, current);
 
-         // Remove slice
-         activeCup.Next = endPickedUp.Next;
-         endPickedUp.Next = null;
- 
-         // Where to place it?
-         var pickedUpCupNumbers = startPickedUp.ChainedNumbers;
-         
-         var destinationCupNumber = activeCupNumber - 1;
-         while (!cups.ContainsKey(destinationCupNumber) || pickedUpCupNumbers.Contains(destinationCupNumber))
-         {
-             destinationCupNumber = destinationCupNumber == 0 ? cups.Count : destinationCupNumber - 1;
-         }
+        if (lastCup != null) lastCup.Next = current;
 
-         // Insert slice
-         var destinationCup = cups[destinationCupNumber];
-         var destNext = destinationCup.Next;
+        lastCup = current;
+    }
 
-         destinationCup.Next = startPickedUp;
-         endPickedUp.Next = destNext;
-         
-         // New active cup
-         activeCupNumber = activeCup.Next.Number;
-     }
+    lastCup.Next = cups[cupNumbers[0]];
 
-     var first = cups[1].Next.Number;
-     var second = cups[1].Next.Next.Number;
- 
-     Console.WriteLine($"String: {first} {second}: {(long) first * second}");
+    var activeCupNumber = cupNumbers[0];
+    var moves = 10_000_000;
+    for (var i = 1; i <= moves; i++)
+    {
+        var activeCup = cups[activeCupNumber];
 
+        var startPickedUp = activeCup.Next;
+        var endPickedUp = activeCup.Next.Next.Next;
+
+        // Remove slice
+        activeCup.Next = endPickedUp.Next;
+        endPickedUp.Next = null;
+
+        // Where to place it?
+        var destinationCupNumber = activeCupNumber - 1;
+        while (!cups.ContainsKey(destinationCupNumber) || startPickedUp.ChainContains(destinationCupNumber))
+            destinationCupNumber = destinationCupNumber == 0 ? cups.Count : destinationCupNumber - 1;
+
+        // Insert slice
+        var destinationCup = cups[destinationCupNumber];
+        var destNext = destinationCup.Next;
+
+        destinationCup.Next = startPickedUp;
+        endPickedUp.Next = destNext;
+
+        // New active cup number
+        activeCupNumber = activeCup.Next.Number;
+    }
+
+    var first = cups[1].Next.Number;
+    var second = cups[1].Next.Next.Number;
+
+    Console.WriteLine($"[Two] First: {first} Second: {second} Product: {(long) first * second}. El: {stopwatch.Elapsed}");
 });
-
+one();
 two();
 
 internal class Cup
@@ -127,27 +113,20 @@ internal class Cup
     {
         Number = number;
     }
+
     public Cup Next { get; set; }
 
-    public Cup Third => Next!.Next!.Next!;
-
-    public HashSet<int> ChainedNumbers 
+    public bool ChainContains(int number)
     {
-        get
-        {
-            var set = new HashSet<int>
-            {
-                Number
-            };
-            
-            var c = this;
-            while (c.Next != null)
-            {
-                c = c.Next;
-                set.Add(c.Number);
-            }
+        var c = this;
 
-            return set;
-        }
+        do
+        {
+            if (c.Number == number) return true;
+
+            c = c.Next;
+        } while (c != null);
+
+        return false;
     }
 }
